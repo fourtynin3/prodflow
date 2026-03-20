@@ -1,23 +1,20 @@
 /* ════════════════════════════════════════
-   js/api.js — xAI Grok API wrapper
+   js/api.js — Groq API wrapper
+   Fast inference: llama, mixtral etc.
    ════════════════════════════════════════ */
 
 const API = (() => {
 
-  const ENDPOINT = 'https://api.x.ai/v1/chat/completions';
- const MODEL = 'grok-3-beta';
+  const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+  const MODEL    = 'llama-3.3-70b-versatile';
 
   function getKey() {
-    const el = document.getElementById('grokKey');
-    return el ? el.value.trim() : '';
+    return document.getElementById('grokKey')?.value.trim() || '';
   }
 
-  /**
-   * Single-turn call (system + one user message)
-   */
   async function call(system, userMsg, maxTokens = 1200) {
     const key = getKey();
-    if (!key) throw new Error('Bitte xAI / Grok API Key eingeben!');
+    if (!key) throw new Error('Bitte Groq API Key eingeben!');
 
     const res = await fetch(ENDPOINT, {
       method: 'POST',
@@ -37,18 +34,15 @@ const API = (() => {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Grok Fehler ${res.status}`);
+      throw new Error(err.error?.message || `Groq Fehler ${res.status}`);
     }
 
     return (await res.json()).choices[0].message.content;
   }
 
-  /**
-   * Multi-turn chat (full history)
-   */
   async function chat(system, messages, maxTokens = 500) {
     const key = getKey();
-    if (!key) throw new Error('Bitte xAI / Grok API Key eingeben!');
+    if (!key) throw new Error('Bitte Groq API Key eingeben!');
 
     const res = await fetch(ENDPOINT, {
       method: 'POST',
@@ -68,13 +62,12 @@ const API = (() => {
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `Grok Fehler ${res.status}`);
+      throw new Error(err.error?.message || `Groq Fehler ${res.status}`);
     }
 
     return (await res.json()).choices[0].message.content;
   }
 
-  /** Strip JSON fences and parse safely */
   function parseJSON(text) {
     const clean = text.replace(/```json|```/g, '').trim();
     return JSON.parse(clean);
