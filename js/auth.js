@@ -9,7 +9,7 @@ const Auth = (() => {
   const CURRENT_UID_KEY = 'pf_current_uid';
   const OFFLINE_KEY     = 'pf_offline_users';
 
-  function getClientId()     { return localStorage.getItem(CLIENT_ID_KEY) || ''; }
+  function getClientId()     { return 'GOOGLE_CLIENT_ID_PLACEHOLDER'; }
   function getSessions()     { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '{}'); }
   function getOfflineUsers() { return JSON.parse(localStorage.getItem(OFFLINE_KEY) || '{}'); }
   function saveOfflineUsers(u) { localStorage.setItem(OFFLINE_KEY, JSON.stringify(u)); }

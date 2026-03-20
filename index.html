@@ -32,17 +32,7 @@
       <!-- Google Sign-In -->
       <div id="googleBtnContainer" class="google-btn-wrap"></div>
 
-      <!-- Google Client ID input (shown once) -->
-      <div class="setup-panel" id="setupPanel">
-        <div class="setup-title">🔑 Google Client ID eingeben</div>
-        <div class="setup-steps">
-          Einmalig nötig · <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Hier holen →</a>
-        </div>
-        <div class="setup-input-row">
-          <input type="text" id="clientIdInput" placeholder="xxxxx.apps.googleusercontent.com" />
-          <button class="btn btn-primary" onclick="Auth.saveClientId()">OK</button>
-        </div>
-      </div>
+      <div id="setupPanel" style="display:none;"></div>
 
       <div class="divider-line">ODER OHNE GOOGLE</div>
 

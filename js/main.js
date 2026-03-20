@@ -10,17 +10,13 @@
     originEl.textContent = location.origin !== 'null' ? location.origin : window.location.href.split('/').slice(0, 3).join('/');
   }
 
-  // Pre-fill saved Client ID
-  const savedClientId = Auth.getClientId();
-  if (savedClientId) {
-    const input = document.getElementById('clientIdInput');
-    if (input) input.value = savedClientId;
-
-    // Wait for Google GSI script to load then init
+  // Auto-init Google Sign-In with injected Client ID
+  const clientId = Auth.getClientId();
+  if (clientId && clientId !== 'GOOGLE_CLIENT_ID_PLACEHOLDER') {
     const waitForGSI = setInterval(() => {
       if (window.google?.accounts) {
         clearInterval(waitForGSI);
-        Auth.initGoogleSignIn(savedClientId);
+        Auth.initGoogleSignIn(clientId);
       }
     }, 200);
   }
