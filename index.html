@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PRODFLOW — AI Workflow Coach</title>
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Google Sign-In SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/base.css" />
+  <link rel="stylesheet" href="css/login.css" />
+  <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/components.css" />
+</head>
+<body>
+
+  <!-- ══════════════ LOGIN SCREEN ══════════════ -->
+  <div id="loginScreen">
+    <div class="login-box">
+      <div class="login-logo">PRODFLOW</div>
+      <div class="login-sub">AI Workflow Coach für Producer</div>
+
+      <div id="loginError"  class="msg-box msg-error"  style="display:none;"></div>
+      <div id="loginSuccess" class="msg-box msg-success" style="display:none;"></div>
+
+      <!-- Google Sign-In -->
+      <div id="googleBtnContainer" class="google-btn-wrap"></div>
+
+      <!-- Client ID Setup Panel (shown until ID is saved) -->
+      <div class="setup-panel" id="setupPanel">
+        <div class="setup-title">🔧 Google Login einrichten (einmalig)</div>
+        <ol class="setup-steps">
+          <li>Öffne <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a></li>
+          <li>Projekt erstellen → <strong>OAuth 2.0 Client ID</strong></li>
+          <li>Typ: <strong>Webanwendung</strong></li>
+          <li>JS-Ursprung eintragen: <code id="currentOrigin"></code></li>
+          <li>Client ID hier einfügen:</li>
+        </ol>
+        <div class="setup-input-row">
+          <input type="text" id="clientIdInput" placeholder="xxxxx.apps.googleusercontent.com" />
+          <button class="btn btn-primary" onclick="Auth.saveClientId()">Speichern</button>
+        </div>
+      </div>
+
+      <div class="divider-line">ODER OHNE GOOGLE</div>
+
+      <!-- Offline Login / Register -->
+      <div class="offline-tabs">
+        <button class="offline-tab active" id="ot-login"   onclick="UI.setOfflineTab('login')">Login</button>
+        <button class="offline-tab"        id="ot-reg"     onclick="UI.setOfflineTab('register')">Registrieren</button>
+      </div>
+
+      <div id="offlineLoginForm">
+        <div class="form-field">
+          <label>Username</label>
+          <input type="text"     id="loginUser" placeholder="dein_username"   onkeydown="if(event.key==='Enter') Auth.offlineLogin()" autocomplete="username" />
+        </div>
+        <div class="form-field">
+          <label>Passwort</label>
+          <input type="password" id="loginPass" placeholder="••••••••"        onkeydown="if(event.key==='Enter') Auth.offlineLogin()" autocomplete="current-password" />
+        </div>
+        <button class="btn btn-secondary btn-full" onclick="Auth.offlineLogin()">→ EINLOGGEN</button>
+      </div>
+
+      <div id="offlineRegForm" style="display:none;">
+        <div class="form-field">
+          <label>Username</label>
+          <input type="text"     id="regUser"  placeholder="mind. 3 Zeichen"  onkeydown="if(event.key==='Enter') Auth.register()" autocomplete="username" />
+        </div>
+        <div class="form-field">
+          <label>Passwort</label>
+          <input type="password" id="regPass"  placeholder="mind. 6 Zeichen"  onkeydown="if(event.key==='Enter') Auth.register()" />
+        </div>
+        <div class="form-field">
+          <label>Passwort wiederholen</label>
+          <input type="password" id="regPass2" placeholder="••••••••"          onkeydown="if(event.key==='Enter') Auth.register()" />
+        </div>
+        <button class="btn btn-secondary btn-full" onclick="Auth.register()">→ ACCOUNT ERSTELLEN</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ MAIN APP ══════════════ -->
+  <div class="app" id="mainApp" style="display:none;">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        PRODFLOW
+        <span>AI Workflow Coach</span>
+      </div>
+      <div class="header-right">
+        <div class="waveform">
+          <div class="wave-bar" style="--h:12px; animation-delay:0.0s"></div>
+          <div class="wave-bar" style="--h:18px; animation-delay:0.1s"></div>
+          <div class="wave-bar" style="--h:24px; animation-delay:0.2s"></div>
+          <div class="wave-bar" style="--h:16px; animation-delay:0.3s"></div>
+          <div class="wave-bar" style="--h:20px; animation-delay:0.4s"></div>
+        </div>
+
+        <!-- User Badge + Dropdown -->
+        <div class="user-badge" onclick="UI.toggleDropdown()">
+          <img   id="headerAvatarImg"      class="user-avatar-img"      style="display:none;" alt="avatar" />
+          <div   id="headerAvatarFallback" class="user-avatar-fallback">?</div>
+          <div class="user-badge-info">
+            <div class="user-name"     id="headerUsername">—</div>
+            <div class="user-provider" id="headerProvider"></div>
+          </div>
+          <span class="chevron">▾</span>
+
+          <div class="user-dropdown" id="userDropdown">
+            <div class="dropdown-meta">EINGELOGGT</div>
+            <div class="dropdown-email" id="dropEmail"></div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item" onclick="UI.openChangePw()">🔑 Passwort ändern</div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item danger" onclick="Auth.logout()">→ Ausloggen</div>
+          </div>
+        </div>
+
+        <div class="status-dot"></div>
+      </div>
+    </header>
+
+    <!-- Grok API Key -->
+    <div class="api-key-bar">
+      <span class="api-icon">⚡</span>
+      <div class="api-key-inner">
+        <input type="password" id="grokKey" placeholder="xAI API Key eingeben (xai-...)" autocomplete="off" />
+        <div class="api-key-note">Grok 3 · Nur lokal verwendet · Nicht gespeichert · <a href="https://console.x.ai" target="_blank">console.x.ai</a></div>
+      </div>
+    </div>
+
+    <!-- Change Password Panel (hidden by default) -->
+    <div id="changePwPanel" class="panel change-pw-panel" style="display:none;">
+      <div class="panel-title">Passwort ändern</div>
+      <div id="changePwError"   class="msg-box msg-error"   style="display:none;"></div>
+      <div id="changePwSuccess" class="msg-box msg-success" style="display:none;"></div>
+      <div class="change-pw-grid">
+        <div class="form-field"><label>Aktuelles PW</label><input type="password" id="cpOld"  placeholder="••••••••" /></div>
+        <div class="form-field"><label>Neues PW</label>    <input type="password" id="cpNew"  placeholder="Min. 6 Zeichen" /></div>
+        <div class="form-field"><label>Wiederholen</label> <input type="password" id="cpNew2" placeholder="••••••••" /></div>
+      </div>
+      <div class="row-gap">
+        <button class="btn btn-primary" onclick="Auth.changePassword()">Speichern</button>
+        <button class="btn btn-ghost"   onclick="UI.closeChangePw()">Abbrechen</button>
+      </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="session" onclick="UI.switchTab('session')">🎧 Session</button>
+      <button class="tab"        data-tab="tasks"   onclick="UI.switchTab('tasks')">📋 Tasks</button>
+      <button class="tab"        data-tab="focus"   onclick="UI.switchTab('focus')">⚡ Focus</button>
+      <button class="tab"        data-tab="stats"   onclick="UI.switchTab('stats')">📊 Stats</button>
+      <button class="tab"        data-tab="chat"    onclick="UI.switchTab('chat')">🧠 AI Chat</button>
+    </nav>
+
+    <!-- ── SESSION VIEW ── -->
+    <div class="view active" id="view-session">
+      <div class="panel">
+        <div class="panel-title">Session Generator</div>
+        <div class="input-grid">
+          <div class="form-field">
+            <label>Style / Genre</label>
+            <select id="style" onchange="UI.onStyleChange()">
+              <option value="Trap">🔥 Trap</option>
+              <option value="Drill">💀 Drill</option>
+              <option value="Drake / Melodic Rap">🌊 Drake / Melodic Rap</option>
+              <option value="Boom Bap">🥁 Boom Bap</option>
+              <option value="R&B / Soul">🎤 R&amp;B / Soul</option>
+              <option value="UK Drill">🇬🇧 UK Drill</option>
+              <option value="Afrobeats">🌍 Afrobeats</option>
+              <option value="Hyperpop">⚡ Hyperpop</option>
+              <option value="Lo-Fi">🌙 Lo-Fi</option>
+              <option value="Custom">✏️ Custom…</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Verfügbare Zeit</label>
+            <select id="duration">
+              <option value="30">⏱ 30 Minuten</option>
+              <option value="60" selected>⏱ 60 Minuten</option>
+              <option value="90">⏱ 90 Minuten</option>
+              <option value="120">⏱ 120 Minuten</option>
+              <option value="180">⏱ 3 Stunden</option>
+            </select>
+          </div>
+        </div>
+        <div id="customStyleWrap" class="form-field" style="display:none;">
+          <label>Eigener Style</label>
+          <input type="text" id="customStyle" placeholder="z.B. Dark Ambient, Jersey Club…" />
+        </div>
+        <div class="form-field">
+          <label>Mood / Vibe (optional)</label>
+          <input type="text" id="mood" placeholder="z.B. Dark & aggressive, Chill & late night…" />
+        </div>
+        <button class="btn btn-primary btn-full" id="genBtn" onclick="Session.generate()">
+          ⚡ SESSION GENERIEREN
+        </button>
+      </div>
+
+      <div class="panel" id="sessionOutput" style="display:none;">
+        <div class="panel-title">Deine Session</div>
+        <div id="sessionMeta" class="session-meta"></div>
+        <div id="sessionBlocks"></div>
+        <div class="row-gap row-wrap" style="margin-top:16px;">
+          <button class="btn btn-secondary" onclick="Session.loadToTasks()">📋 Als Tasks laden</button>
+          <button class="btn btn-ghost"     onclick="Session.startFocus()">⚡ Focus starten</button>
+          <button class="btn btn-ghost"     onclick="Session.generate()">🔄 Neu generieren</button>
+        </div>
+      </div>
+
+      <div class="next-step-box" id="nextStepBox" style="display:none;">
+        <div class="next-arrow">→</div>
+        <div class="next-content">
+          <div class="next-label">Next Step</div>
+          <div class="next-text" id="nextStepText">—</div>
+        </div>
+        <button class="btn btn-ghost" onclick="Session.refreshNextStep()">Refresh</button>
+      </div>
+    </div>
+
+    <!-- ── TASKS VIEW ── -->
+    <div class="view" id="view-tasks">
+      <div class="panel">
+        <div class="panel-title">Task Breakdown</div>
+        <div class="form-field">
+          <label>Beat / Projekt beschreiben</label>
+          <textarea id="taskInput" placeholder='z.B. "Trap Beat machen" oder "Sample-based R&B Track fertigstellen"'></textarea>
+        </div>
+        <div class="row-gap">
+          <button class="btn btn-primary" onclick="Tasks.breakdown()">🧠 AI Breakdown</button>
+          <button class="btn btn-ghost"   onclick="Tasks.showManualAdd()">+ Manuell</button>
+        </div>
+      </div>
+
+      <div class="panel" id="taskListPanel" style="display:none;">
+        <div class="panel-title panel-title--between">
+          <span>Tasks</span>
+          <button class="btn btn-ghost btn-sm" onclick="Tasks.clearAll()">Clear All</button>
+        </div>
+        <div id="taskProgress"></div>
+        <div id="taskList"></div>
+      </div>
+
+      <div class="panel" id="manualAddPanel" style="display:none;">
+        <div class="panel-title">Task hinzufügen</div>
+        <div class="row-gap">
+          <input type="text" id="manualTaskInput" placeholder="Task beschreiben…"
+                 onkeydown="if(event.key==='Enter') Tasks.saveManual()" />
+          <button class="btn btn-primary" onclick="Tasks.saveManual()">Add</button>
+          <button class="btn btn-ghost"   onclick="Tasks.hideManualAdd()">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FOCUS VIEW ── -->
+    <div class="view" id="view-focus">
+      <div id="focusEmpty" class="panel">
+        <div class="empty-state">
+          <div class="empty-icon">⚡</div>
+          <p>Keine aktive Task.<br>Geh zu <strong>Tasks</strong> und starte den Focus Mode.</p>
+          <button class="btn btn-secondary" style="margin-top:16px;" onclick="UI.switchTab('tasks')">→ Zu Tasks</button>
+        </div>
+      </div>
+
+      <div id="focusActive" style="display:none;">
+        <div class="focus-card">
+          <div class="focus-tag">Aktuelle Aufgabe</div>
+          <div class="focus-task" id="focusTask">—</div>
+          <div class="timer-display" id="timerDisplay">25:00</div>
+          <div class="timer-controls">
+            <button class="btn btn-primary" id="timerBtn" onclick="Timer.toggle()">▶ START</button>
+            <button class="btn btn-ghost" onclick="Timer.reset()">↺ Reset</button>
+            <button class="btn btn-ghost" onclick="Timer.set(25)">25</button>
+            <button class="btn btn-ghost" onclick="Timer.set(15)">15</button>
+            <button class="btn btn-ghost" onclick="Timer.set(45)">45</button>
+          </div>
+        </div>
+
+        <div class="row-gap row-wrap">
+          <button class="btn btn-secondary" onclick="Tasks.focusDone()">✓ Task erledigt</button>
+          <button class="btn btn-ghost"     onclick="Tasks.focusSkip()">→ Überspringen</button>
+          <button class="btn btn-ghost"     onclick="Tasks.exitFocus()">✕ Beenden</button>
+        </div>
+
+        <div class="next-step-box" style="margin-top:16px;">
+          <div class="next-arrow">→</div>
+          <div class="next-content">
+            <div class="next-label">Danach</div>
+            <div class="next-text" id="focusNextTask">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── STATS VIEW ── -->
+    <div class="view" id="view-stats">
+      <div class="stats-grid">
+        <div class="stat-card"><div class="stat-value" id="stat-sessions">0</div><div class="stat-label">Sessions</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-tasks">0</div>   <div class="stat-label">Tasks Done</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-time">0</div>    <div class="stat-label">Min Fokus</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Fortschritt</div>
+        <div class="progress-label">
+          <span id="progDone">0 Tasks erledigt</span>
+          <span id="progTotal">0 gesamt</span>
+        </div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="mainProgress" style="width:0%"></div></div>
+      </div>
+      <div style="text-align:center;margin-top:12px;">
+        <button class="btn btn-ghost btn-danger" onclick="Store.resetAll()">⚠ Alle Daten zurücksetzen</button>
+      </div>
+    </div>
+
+    <!-- ── CHAT VIEW ── -->
+    <div class="view" id="view-chat">
+      <div class="panel">
+        <div class="panel-title">AI Producer Coach</div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="msg msg-ai">
+            <div class="msg-label">PRODFLOW AI</div>
+            Was willst du heute bauen? Frag mich nach Ideen, Techniken, Sound Design, Mixing-Tipps oder lass dir deinen nächsten Step sagen. 🎧
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input type="text" id="chatInput" placeholder="Frag den AI Coach…"
+                 onkeydown="if(event.key==='Enter') Chat.send()" />
+          <button class="btn btn-accent2" onclick="Chat.send()">Send</button>
+        </div>
+        <div class="quick-prompts">
+          <button class="btn btn-ghost btn-xs" onclick="Chat.quick('Was ist mein nächster Schritt?')">Next Step?</button>
+          <button class="btn btn-ghost btn-xs" onclick="Chat.quick('Gib mir Melody-Ideen für meinen Beat')">Melody Ideen</button>
+          <button class="btn btn-ghost btn-xs" onclick="Chat.quick('Wie mix ich 808 richtig?')">808 Mix Tip</button>
+          <button class="btn btn-ghost btn-xs" onclick="Chat.quick('Ich bin im Kreativblock, was soll ich tun?')">Kreativblock</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- Scripts: load order matters -->
+  <script src="js/store.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/tasks.js"></script>
+  <script src="js/session.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
