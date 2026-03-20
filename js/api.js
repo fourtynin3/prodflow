@@ -5,7 +5,7 @@
 const API = (() => {
 
   const ENDPOINT = 'https://api.x.ai/v1/chat/completions';
-  const MODEL    = 'grok-2-latest';
+ const MODEL = 'grok-3-beta';
 
   function getKey() {
     const el = document.getElementById('grokKey');
