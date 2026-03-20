@@ -9,7 +9,7 @@ const API = (() => {
   const MODEL    = 'llama-3.3-70b-versatile';
 
   function getKey() {
-    return document.getElementById('grokKey')?.value.trim() || '';
+    return 'GROQ_KEY_PLACEHOLDER';
   }
 
   async function call(system, userMsg, maxTokens = 1200) {
